@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/bcgov/kiln
+  repository: ghcr.io/kiiskila/klamm-kiln
   tag: latest
   pullPolicy: Always
 
