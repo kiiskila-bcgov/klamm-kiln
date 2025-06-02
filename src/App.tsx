@@ -3,6 +3,7 @@ import NewFormPage from "./NewFormPage";
 import EditFormPage from "./EditFormPage";
 import ViewFormPage from "./ViewFormPage";
 import PreviewFormPage from "./PreviewFormPage";
+import ExternalPreviewPage from "./ExternalPreviewPage";
 import PrintFormPage from "./PrintFormPage";
 import UnauthorizedPage from "./UnauthorizedPage";
 import ErrorPage from "./ErrorPage";
@@ -67,6 +68,7 @@ const App: React.FC = () => {
         
         {/* Public Routes */}
         <Route path="/preview" element={<PreviewFormPage />} />
+        <Route path="/preview/:id" element={<ExternalPreviewPage />} />
         <Route path="/printToPDF" element={<PrintFormPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
         <Route path="/error" element={<ErrorPage />} />
