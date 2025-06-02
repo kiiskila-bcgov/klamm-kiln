@@ -25,3 +25,19 @@ export type ConnectionStatus =
   | "connected"
   | "disconnected"
   | "error";
+
+// Connection status color mapping
+export const getConnectionStatusColor = (status: ConnectionStatus): string => {
+  switch (status) {
+    case "connected":
+      return "#24a148";
+    case "connecting":
+      return "#f1c21b";
+    case "disconnected":
+      return "#da1e28";
+    case "error":
+      return "#da1e28";
+    default:
+      return "#8a3ffc";
+  }
+};

@@ -19,16 +19,6 @@ export default defineConfig(({ mode }) => {
           ws: true,
           changeOrigin: true,
         },
-        "/broadcasting": {
-          target: env.VITE_COMM_API_PROXY_TARGET,
-          changeOrigin: true,
-          secure: false,
-        },
-        "/sanctum": {
-          target: env.VITE_COMM_API_PROXY_TARGET,
-          changeOrigin: true,
-          secure: false,
-        },
       },
     },
   };

@@ -1,44 +1,51 @@
 // Form field base interface
 export interface BaseFormField {
-  type: string;
+  type?: string;
   id?: string | null;
-  label: string;
+  label?: string;
   helperText?: string;
   value?: any;
+  name?: string | null;
 }
 
-// Specific form field types
 export interface TextInfoField extends BaseFormField {
   type: "text-info";
-  value: string;
+  value?: string | null;
 }
 
 export interface TextInputField extends BaseFormField {
   type: "text-input";
+  value?: string | null;
 }
 
 export interface TextAreaField extends BaseFormField {
   type: "text-area";
+  value?: string | null;
 }
 
 export interface DropdownField extends BaseFormField {
   type: "dropdown";
+  value?: string | null;
 }
 
 export interface RadioField extends BaseFormField {
   type: "radio";
+  value?: string | null;
 }
 
 export interface CheckboxField extends BaseFormField {
   type: "checkbox";
+  value?: string | boolean | null;
 }
 
 export interface ToggleField extends BaseFormField {
   type: "toggle";
+  value?: string | boolean | null;
 }
 
 export interface DateField extends BaseFormField {
   type: "date";
+  value?: string | null;
 }
 
 export interface GroupField extends BaseFormField {
@@ -71,7 +78,7 @@ export interface DataSource {
 
 // Form definition DTO
 export interface FormDefinitionDto {
-  id: string;
+  id?: string;
   version: number;
   ministry_id: number;
   form_id: string;
@@ -118,7 +125,6 @@ export interface ApiDataResponse {
   [key: string]: any;
 }
 
-// Internal form data structure (what we use in the component)
 export interface FormData {
   form_definition: FormDefinitionDto;
   logs: Record<string, LogEntryDto>;
@@ -126,15 +132,14 @@ export interface FormData {
   metadata: Record<string, unknown>;
 }
 
+export interface URLParams {
+  id: string;
+  [key: string]: string | undefined;
+}
+
 // Legacy interface for backward compatibility
 export interface ApiDataItem {
   id?: string;
   value?: any;
   [key: string]: any;
-}
-
-// URL params interface
-export interface URLParams {
-  id: string;
-  [key: string]: string | undefined;
 }
