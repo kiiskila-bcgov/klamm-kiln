@@ -242,6 +242,9 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
   Some attributes need to be set for paging for PDF generation
   */
   useEffect(() => {
+    // Update formData when new data is received
+    setFormData(JSON.parse(JSON.stringify(data.form_definition)));
+    
     const initialFormStates: { [key: string]: string } = {};
     const initialGroupStates: { [key: string]: GroupState } = {}; // Changed type here   
 
@@ -272,8 +275,8 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
       });
     }
 
-    if (formData?.data?.items) {
-      processItemsInitially(formData.data.items);
+    if (data?.form_definition?.data?.items) {
+      processItemsInitially(data.form_definition.data.items);
     }
     setFormStates(initialFormStates);
     setGroupStates(initialGroupStates);
@@ -305,7 +308,7 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
         initialFormStates[key] = value;
       }
     });
-  }, []);
+  }, [data]); // Add data as dependency to re-run when data changes
 
 
   /*
