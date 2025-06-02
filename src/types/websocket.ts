@@ -5,7 +5,7 @@ export const isPusherConnector = (
   return connector && typeof connector.pusher !== "undefined";
 };
 
-// Get pusher connection safely
+// Get pusher connection
 export const getPusherConnection = (echoInstance: any) => {
   if (!echoInstance?.connector || !isPusherConnector(echoInstance.connector)) {
     return null;
@@ -13,7 +13,7 @@ export const getPusherConnection = (echoInstance: any) => {
   return echoInstance.connector.pusher?.connection;
 };
 
-// Get socket ID safely
+// Get socket ID
 export const getSocketId = (echoInstance: any): string | null => {
   const connection = getPusherConnection(echoInstance);
   return connection?.socket_id || null;

@@ -110,9 +110,19 @@ export interface LogEntryDto {
   updated_at: string;
 }
 
+// Form version DTO
+export interface FormVersionDto {
+  id: string;
+  form_id: string;
+  version: number;
+  version_number: string;
+  status: string;
+}
+
 // API response DTO
 export interface ApiDataResponse {
   form_template: FormDefinitionDto;
+  form_version: FormVersionDto;
   logs: Record<string, LogEntryDto>;
   data?: {
     items?: Array<{
@@ -127,6 +137,7 @@ export interface ApiDataResponse {
 
 export interface FormData {
   form_definition: FormDefinitionDto;
+  form_version: FormVersionDto;
   logs: Record<string, LogEntryDto>;
   data: Record<string, string>;
   metadata: Record<string, unknown>;
@@ -137,7 +148,6 @@ export interface URLParams {
   [key: string]: string | undefined;
 }
 
-// Legacy interface for backward compatibility
 export interface ApiDataItem {
   id?: string;
   value?: any;

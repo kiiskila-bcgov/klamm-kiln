@@ -2,10 +2,14 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { API } from "./utils/api";
 import Presenter from "./Presenter";
+import LogsViewer from "./common/LogsViewer";
 import {
   Button,
   InlineLoading,
   InlineNotification,
+  Modal,
+  Tag,
+  Link,
 } from "carbon-components-react";
 import Echo from "laravel-echo";
 import Pusher from "pusher-js";
@@ -21,6 +25,7 @@ import {
   ConnectionStatus,
   getConnectionStatusColor,
 } from "./types/websocket";
+import "./styles/ExternalPreviewPage.scss";
 
 // Extend Window interface for Pusher
 // Required for Laravel Echo to work
@@ -43,6 +48,7 @@ let globalInitializing = false;
 const transformApiResponse = (apiData: ApiDataResponse): FormData => {
   return {
     form_definition: apiData.form_template,
+    form_version: apiData.form_version,
     logs: apiData.logs,
     data:
       apiData.data?.items?.reduce<Record<string, string>>(
@@ -101,6 +107,7 @@ const ExternalPreviewPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatus>("connecting");
+  const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const echoRef = useRef<any>(null);
   const subscriptionRef = useRef<any>(null);
 
@@ -290,12 +297,10 @@ const ExternalPreviewPage = () => {
 
   if (loading) {
     return (
-      <div className="loading-container">
+      <div>
         <InlineLoading description="Loading form..." status="active" />
-        <div
-          style={{ marginTop: "1rem", fontSize: "0.875rem", color: "#6f6f6f" }}
-        >
-          WebSocket:{" "}
+        <div>
+          Klamm Connection:{" "}
           <span style={{ color: getConnectionStatusColor(connectionStatus) }}>
             {connectionStatus}
           </span>
@@ -306,26 +311,22 @@ const ExternalPreviewPage = () => {
 
   if (error) {
     return (
-      <div className="error-container">
+      <div>
         <InlineNotification kind="error" title="Error" subtitle={error} />
-        <Button onClick={goBack} style={{ marginTop: "1rem" }}>
-          Go Back
-        </Button>
+        <Button onClick={goBack}>Go Back</Button>
       </div>
     );
   }
 
   if (!formData) {
     return (
-      <div className="error-container">
+      <div>
         <InlineNotification
           kind="error"
           title="No Data"
           subtitle="No form data was returned from the API."
         />
-        <Button onClick={goBack} style={{ marginTop: "1rem" }}>
-          Go Back
-        </Button>
+        <Button onClick={goBack}>Go Back</Button>
       </div>
     );
   }
@@ -333,56 +334,97 @@ const ExternalPreviewPage = () => {
   return (
     <div className="preview-container">
       {isDraft && (
-        <div
-          style={{
-            backgroundColor: "#ff6b35",
-            color: "white",
-            padding: "8px 16px",
-            textAlign: "center",
-            fontWeight: "bold",
-            fontSize: "0.875rem",
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 1001,
-            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-            display: "block",
-          }}
-          className="draft-banner"
-        >
-          <style>{`.draft-banner { @media print { display: none !important; } }`}</style>
-          🚧 DRAFTING VERSION
+        <div className="draft-banner">
+          🚧 DRAFT VERSION - This form is still being edited and may not reflect
+          the current version.{" "}
+          <Link
+            href={`/preview/${formVersionID}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            View the current version
+          </Link>
         </div>
       )}
-      <div
-        style={{
-          position: "fixed",
-          top: "10px",
-          right: "10px",
-          zIndex: 1000,
-          fontSize: "0.75rem",
-          padding: "4px 8px",
-          backgroundColor: "rgba(255, 255, 255, 0.9)",
-          border: "1px solid #e0e0e0",
-          borderRadius: "4px",
-        }}
+
+      <Button
+        kind="ghost"
+        size="small"
+        onClick={() => setSidePanelOpen(true)}
+        className={`info-button ${
+          isDraft ? "info-button--draft" : "info-button--normal"
+        }`}
       >
-        WS:{" "}
         <span style={{ color: getConnectionStatusColor(connectionStatus) }}>
-          {connectionStatus}
+          ●
         </span>
-        <br />
-        Mode: {isDraft ? "Viewing Draft" : ""}
-        <br />
-        Last Update: {new Date().toLocaleTimeString()}
+        Info
+      </Button>
+      {sidePanelOpen && (
+        <>
+          <Modal
+            open={sidePanelOpen}
+            onRequestClose={() => setSidePanelOpen(false)}
+            modalHeading="Form Info"
+            primaryButtonText="Close"
+            onRequestSubmit={() => setSidePanelOpen(false)}
+            passiveModal
+            className="side-panel-modal"
+          >
+            <div>
+              <div>
+                <h4>
+                  Klamm Connection Status:
+                  <Tag
+                    type={
+                      connectionStatus === "connected"
+                        ? "green"
+                        : connectionStatus === "connecting"
+                        ? "blue"
+                        : "red"
+                    }
+                    size="sm"
+                  >
+                    {connectionStatus}
+                  </Tag>
+                </h4>
+                <div>
+                  <div className="connection-status-item">
+                    <strong>Form Version:</strong>{" "}
+                    <Tag type={"blue"} size="sm">
+                      {formData.form_definition.version || "N/A"}
+                    </Tag>
+                  </div>
+                  <div className="connection-status-item">
+                    <strong>Form Version Status:</strong>{" "}
+                    <Tag type={"blue"} size="sm">
+                      {formData.form_version.status || "N/A"}
+                    </Tag>
+                  </div>
+                  <div className="connection-status-item">
+                    <strong>Last Update:</strong>{" "}
+                    <Tag type="gray" size="sm">
+                      {new Date().toLocaleTimeString()}
+                    </Tag>
+                  </div>
+                </div>
+              </div>
+              <LogsViewer logs={formData?.logs || null} maxHeight="600px" />
+            </div>
+          </Modal>
+        </>
+      )}
+
+      <div
+        className={`content-padding ${isDraft ? "content-padding--draft" : ""}`}
+      >
+        <Presenter
+          key={`${JSON.stringify(formData?.form_definition)}-${Date.now()}`}
+          data={formData}
+          mode="view"
+          goBack={goBack}
+        />
       </div>
-      <Presenter
-        key={`${JSON.stringify(formData?.form_definition)}-${Date.now()}`}
-        data={formData}
-        mode="view"
-        goBack={goBack}
-      />
     </div>
   );
 };
