@@ -2,14 +2,14 @@
 
 echo "🏁 Starting container with runtime build..."
 
-# Write all VITE_* env vars dynamically to .env
-printenv | grep '^VITE_' > .env
+# Ensure /app is group-writable
+chmod -R g+w /app
 
-# Install only production deps (optional: run if not already)
-npm ci --omit=dev
+# Write all VITE_* env vars dynamically to .env (use tee for permissions)
+printenv | grep '^VITE_' | tee .env > /dev/null
 
-# Build the app using pod-provided env vars
+# Optional: Rebuild only if dynamic .env vars are required
 npm run build
 
-# Serve it
+# Serve the app
 serve -s dist -l 8080
