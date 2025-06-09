@@ -23,8 +23,9 @@ COPY --from=build-src /app .
 # Copy a startup script
 COPY entrypoint.sh .
 
-# Make sure it's executable
-RUN chmod +x ./entrypoint.sh
+# Make executable
+RUN chmod +x ./entrypoint.sh \
+    && chmod -R g+w /app
 
 # Expose port
 EXPOSE 8080
