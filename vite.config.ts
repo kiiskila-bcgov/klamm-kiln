@@ -5,7 +5,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
 
   return {
-    base: "./",
+    base: "/preview/",
     plugins: [react()],
     build: {
       target: "esnext",
