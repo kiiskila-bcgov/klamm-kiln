@@ -8,8 +8,10 @@ chmod -R g+w /app
 # Write all VITE_* env vars dynamically to .env (use tee for permissions)
 printenv | grep '^VITE_' | tee .env > /dev/null
 
-# Optional: Rebuild only if dynamic .env vars are required
+# Build the application
+echo "Building application..."
 npm run build
 
-# Serve the app
-serve -s dist -l 8080
+# Start the custom server
+echo "Starting custom Node.js server on port 8080..."
+node server.js
