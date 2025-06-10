@@ -14,14 +14,12 @@ COPY . .
 FROM node:20-alpine
 WORKDIR /app
 
-# Install production-only serve package
-RUN npm install -g serve
-
 # Copy app source and deps
 COPY --from=build-src /app .
 
 # Copy a startup script
 COPY entrypoint.sh .
+COPY server.js .
 
 # Make executable
 RUN chmod +x ./entrypoint.sh \
