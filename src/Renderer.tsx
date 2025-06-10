@@ -3,7 +3,6 @@ import "./print.css";
 import '@carbon/styles/css/styles.css';
 import "./page.scss";
 import React, { useState, useEffect, useRef, useContext } from "react";
-import { useHref } from 'react-router-dom';
 import CustomModal from "./common/CustomModal"; // Import the modal component
 import LoadingOverlay from "./common/LoadingOverlay";
 import { AuthenticationContext } from "./App";
@@ -1761,7 +1760,8 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
   };
 
 
-  const ministryLogoPath = useHref(`/ministries/${formData.ministry_id}.png`);
+  // Use absolute path for ministry logo to avoid route-relative issues
+  const ministryLogoPath = `/preview/ministries/${formData.ministry_id}.png`;
 
   /*
   Function for parsing the dynamic fields' value (data binding) in text-info component
