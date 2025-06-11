@@ -94,6 +94,22 @@ const setupChannelEventBindings = (channel: any, onUpdate: () => void) => {
   }
 };
 
+// Utility to select the correct websocket host based on current hostname
+function getReverbWsHost() {
+  const prod = import.meta.env.VITE_REVERB_PROD_HOST;
+  const dev = import.meta.env.VITE_REVERB_DEV_HOST;
+  const test = import.meta.env.VITE_REVERB_TEST_HOST;
+  const defaultHost = import.meta.env.VITE_REVERB_HOST || "localhost";
+
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (dev && host.endsWith(dev)) return dev;
+    if (test && host.endsWith(test)) return test;
+    if (prod && host === prod) return prod;
+  }
+  return defaultHost;
+}
+
 const ExternalPreviewPage = () => {
   const { id } = useParams<URLParams>();
   const formVersionID = id;
@@ -211,7 +227,7 @@ const ExternalPreviewPage = () => {
       setConnectionStatus("connecting");
 
       const scheme = import.meta.env.VITE_REVERB_SCHEME || "http";
-      const host = import.meta.env.VITE_REVERB_HOST || "localhost";
+      const host = getReverbWsHost();
       const portEnv = import.meta.env.VITE_REVERB_PORT;
 
       const isSecure = scheme === "https";
