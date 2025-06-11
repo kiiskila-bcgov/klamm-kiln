@@ -8,9 +8,10 @@ function getKlammApiBaseUrl(): string {
 
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
-    if (prod && host.includes(new URL(prod).hostname)) return prod;
-    if (dev && host.includes(new URL(dev).hostname)) return dev;
-    if (test && host.includes(new URL(test).hostname)) return test;
+
+    if (dev && host.endsWith(new URL(dev).hostname)) return dev;
+    if (test && host.endsWith(new URL(test).hostname)) return test;
+    if (prod && host === new URL(prod).hostname) return prod;
   }
   return defaultUrl;
 }
