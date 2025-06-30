@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { API } from "./utils/api";
 import Presenter from "./Presenter";
 import LogsViewer from "./common/LogsViewer";
@@ -113,7 +113,6 @@ function getReverbWsHost() {
 const ExternalPreviewPage = () => {
   const { id } = useParams<URLParams>();
   const formVersionID = id;
-  const navigate = useNavigate();
 
   const urlParams = new URLSearchParams(window.location.search);
   const isDraft = urlParams.get("draft") === "true";
@@ -127,6 +126,8 @@ const ExternalPreviewPage = () => {
   const echoRef = useRef<any>(null);
   const subscriptionRef = useRef<any>(null);
 
+  const usePreMigrationFormat = true;
+
   // Get form data from API
   const fetchFormData = async (isRealTimeUpdate = false) => {
     try {
@@ -134,9 +135,10 @@ const ExternalPreviewPage = () => {
         setLoading(true);
       }
 
-      const url = `${API.getFormById}${formVersionID}/data${
-        isDraft ? "?draft=true" : ""
-      }`;
+      const url = `${API.getFormById}${formVersionID}/data?${
+        usePreMigrationFormat ? "pre_migration=true&" : ""
+      }${isDraft ? "draft=true" : ""}`.replace(/&$/, "");
+
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -315,7 +317,8 @@ const ExternalPreviewPage = () => {
   }, [formVersionID, connectionStatus, isDraft]);
 
   const goBack = () => {
-    navigate(-1);
+    const url = `${API.getFormKlammURL}${formVersionID}`;
+    window.location.href = url;
   };
 
   if (loading) {
