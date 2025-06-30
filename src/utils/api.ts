@@ -25,4 +25,5 @@ export const API = {
   unlockICMData: getApiUrl("/clearICMLockedFlag", import.meta.env.VITE_COMM_API_UNLOCK_ICM_FORM_URL),
   loadSavedJson: getApiUrl("/loadSavedJson", import.meta.env.VITE_COMM_API_LOADSAVEDJSON_ENDPOINT_URL),  
   getFormById: `${getKlammApiBaseUrl()}/api/form-versions/`,
+  getFormKlammURL: `${getKlammApiBaseUrl()}/forms/form-versions/`,
 };
