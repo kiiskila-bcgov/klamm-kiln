@@ -447,7 +447,7 @@ const ExternalPreviewPage = () => {
         <Presenter
           key={`${JSON.stringify(formData?.form_definition)}-${Date.now()}`}
           data={formData}
-          mode="view"
+          mode="preview"
           goBack={goBack}
         />
       </div>
