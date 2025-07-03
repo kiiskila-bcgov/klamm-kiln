@@ -223,6 +223,58 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
     return () => mediaQueryList.removeEventListener("change", handlePrint);
   }, []);
 
+  //Manage style and script tags for web and pdf
+  function getByType<T extends { type: string; content: string }>(arr: T[] | undefined, type: string): string | undefined {
+    return arr?.find((item) => item.type === type)?.content;
+  }
+
+  const styles = data?.form_definition?.data?.styles;
+  const scripts = data?.form_definition?.data?.scripts;
+
+  const webStyleSheet = getByType(styles, 'web');
+  const pdfStyleSheet = getByType(styles, 'pdf');
+  const webFormScript = getByType(scripts, 'web');
+  const pdfFormScript = getByType(scripts, 'pdf');
+
+  useEffect(() => {
+    const mode = isPrinting ? 'pdf' : 'web';
+    const styleId = `${mode}-form-styles`;
+    const scriptId = `${mode}-form-script`;
+
+    // Remove any existing style/script tags for both modes
+    ['web', 'pdf'].forEach((m) => {
+      const s = document.getElementById(`${m}-form-styles`);
+      if (s) s.remove();
+      const sc = document.getElementById(`${m}-form-script`);
+      if (sc) sc.remove();
+    });
+
+    // Add current mode's style/script if present
+    const styleContent = mode === 'pdf' ? pdfStyleSheet : webStyleSheet;
+    const scriptContent = mode === 'pdf' ? pdfFormScript : webFormScript;
+
+    if (styleContent) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = styleContent;
+      document.head.appendChild(style);
+    }
+    if (scriptContent) {
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.textContent = scriptContent;
+      document.head.appendChild(script);
+    }
+
+    // Cleanup on unmount
+    return () => {
+      const style = document.getElementById(styleId);
+      if (style) style.remove();
+      const script = document.getElementById(scriptId);
+      if (script) script.remove();
+    };
+  }, [isPrinting, webStyleSheet, pdfStyleSheet, webFormScript, pdfFormScript]);
+
   //on close, execute unlock form
   useEffect(() => {
     const handleClose = (event: BeforeUnloadEvent) => {
@@ -1365,6 +1417,7 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
         return (
           <>
             <div key={item.id}
+              id={item.id}
               className="common-container"
               style={{
                 ...(isPrinting ? item.pdfStyles : item.webStyles),
