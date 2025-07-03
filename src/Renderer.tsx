@@ -1364,7 +1364,12 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
 
         return (
           <>
-            <div key={item.id} className="common-container">
+            <div key={item.id}
+              className="common-container"
+              style={{
+                ...(isPrinting ? item.pdfStyles : item.webStyles),
+              }}
+            >
               <div className="group-header"
                 style={{
                   display: 'flex',
