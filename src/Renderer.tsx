@@ -1066,7 +1066,6 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
                 invalid={!!error}
                 invalidText={error || ""}
                 helperText={item.helperText}
-                {...item.attributes}
               />
             </Component>
             <div className="hidden-on-screen field-wrapper-print" style={{
@@ -1283,7 +1282,6 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
                     labelText={option.label}
                     value={option.value}
                     id={`${fieldId}-${index}`}
-                    {...item.attributes}
                   />
                 ))}
               </Component></div>
