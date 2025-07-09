@@ -1432,7 +1432,7 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
           <>
             <div key={item.id}
               id={item.id}
-              className="common-container"
+              className={item?.attributes?.containerType == 'page' ? "page-container" : item?.attributes?.containerType == 'section' ? "section-container" : "common-container"}
               style={{
                 ...(isPrinting ? item.pdfStyles : item.webStyles),
               }}
