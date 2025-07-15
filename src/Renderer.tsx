@@ -411,8 +411,38 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
         const foundGroup = findGroup(item.containerItems, groupId);
         if (foundGroup) return foundGroup;
       }
+      // Search within group items for nested groups
+      if (item.type === "group" && item.groupItems) {
+        for (const groupItem of item.groupItems) {
+          const foundGroup = findGroup(groupItem.fields, groupId);
+          if (foundGroup) return foundGroup;
+        }
+      }
     }
     return undefined;
+  };
+
+  // Find and update a nested group
+  const updateNestedGroup = (items: Item[], groupId: string, updateFn: (group: Item) => void): boolean => {
+    for (const item of items) {
+      if (item.id === groupId && item.type === "group") {
+        updateFn(item);
+        return true;
+      }
+      if (item.type === "container" && item.containerItems) {
+        if (updateNestedGroup(item.containerItems, groupId, updateFn)) {
+          return true;
+        }
+      }
+      if (item.type === "group" && item.groupItems) {
+        for (const groupItem of item.groupItems) {
+          if (updateNestedGroup(groupItem.fields, groupId, updateFn)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   };
 
   /*
@@ -427,43 +457,74 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
   ) => {
     setFormData((prevState) => {
       const newFormData = { ...prevState };
-      const group = newFormData?.data?.items ? findGroup(newFormData.data.items, groupId) : undefined;
+      
+      const updateGroup = (group: Item) => {
+        if (group.groupItems) {
+          const groupIndex = group.groupItems.length;
 
-      if (group && group.groupItems) {
-        const groupIndex = group.groupItems.length;
+          // Create a deep copy of the first group item and modify its IDs
+          const newGroupItem = JSON.parse(JSON.stringify(group.groupItems[0]));
+          
+          // Recursively update field IDs in the new group item
+          const updateFieldIds = (fields: Item[], currentGroupId: string, currentGroupIndex: number) => {
+            fields.forEach((field: Item) => {
+              if (field.type === "group" && field.groupItems) {
+                // For nested groups, keep the original field ID but update nested field IDs
+                field.groupItems.forEach((nestedGroupItem, nestedIndex) => {
+                  updateFieldIds(nestedGroupItem.fields, field.id, nestedIndex);
+                });
+              } else {
+                const originalFieldId = field.id.includes('-') ? 
+                  field.id.split("-").slice(2).join("-") : field.id;
+                field.id = generateUniqueId(currentGroupId, currentGroupIndex, originalFieldId);
+              }
+            });
+          };
 
-        // Create a deep copy of the first group item and modify its IDs
-        const newGroupItem = JSON.parse(JSON.stringify(group.groupItems[0]));
-        newGroupItem.fields.forEach((field: Item) => {
-          const newFieldId = generateUniqueId(
-            groupId,
-            groupIndex,
-            field.id.split("-").slice(2).join("-")
-          );
-          field.id = newFieldId;
-        });
-        group.groupItems.push(newGroupItem);
-      }
+          updateFieldIds(newGroupItem.fields, groupId, groupIndex);
+          group.groupItems.push(newGroupItem);
+        }
+      };
 
+      updateNestedGroup(newFormData.data.items, groupId, updateGroup);
       return newFormData;
     });
 
     setGroupStates((prevGroupStates) => {
       const newState = { ...prevGroupStates };
       const newGroupItemState: { [key: string]: string } = {};
-      const group = formData?.data.items.find((item) => item.id === groupId);
+      const group = findGroup(formData?.data?.items || [], groupId);
       const groupIndex = newState[groupId]?.length || 0;
       const firstGroupItem = group?.groupItems?.[0];
 
-      firstGroupItem?.fields.forEach((field: Item) => {
-        const newFieldId = generateUniqueId(
-          groupId,
-          groupIndex,
-          field.id.split("-").slice(2).join("-")
-        );
-        newGroupItemState[newFieldId] =
-          initialData && initialData[newFieldId] ? initialData[newFieldId] : ""; // Use initialData if available
-      });
+      // Recursively create states for nested fields
+      const createNestedStates = (fields: Item[], parentGroupId: string, parentGroupIndex: number) => {
+        fields.forEach((field: Item) => {
+          if (field.type === "group") {
+            // Initialize nested group
+            if (!newState[field.id]) {
+              newState[field.id] = [];
+            }
+            // Add initial group items
+            if (field.groupItems) {
+              field.groupItems.forEach((nestedGroupItem, nestedIndex) => {
+                const nestedGroupState: { [key: string]: string } = {};
+                createNestedStates(nestedGroupItem.fields, field.id, nestedIndex);
+                newState[field.id][nestedIndex] = nestedGroupState;
+              });
+            }
+          } else {
+            const newFieldId = field.id.includes('-') ? field.id : 
+              generateUniqueId(parentGroupId, parentGroupIndex, field.id);
+            newGroupItemState[newFieldId] = 
+              initialData && initialData[newFieldId] ? initialData[newFieldId] : "";
+          }
+        });
+      };
+
+      if (firstGroupItem) {
+        createNestedStates(firstGroupItem.fields, groupId, groupIndex);
+      }
 
       return {
         ...newState,
@@ -481,23 +542,31 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
   const handleRemoveGroupItem = (groupId: string, groupItemIndex: number) => {
     setFormData((prevState) => {
       const newFormData = { ...prevState };
-      //const group = newFormData?.data.items.find((item) => item.id === groupId);
-      const group = newFormData?.data?.items ? findGroup(newFormData.data.items, groupId) : undefined;
+      
+      const updateGroup = (group: Item) => {
+        if (group.groupItems) {
+          group.groupItems.splice(groupItemIndex, 1);
+          group.groupItems.forEach((groupItem, newIndex) => {
+            const updateFieldIds = (fields: Item[], currentGroupId: string, currentGroupIndex: number) => {
+              fields.forEach((field: Item) => {
+                if (field.type === "group" && field.groupItems) {
+                  field.groupItems.forEach((nestedGroupItem, nestedIndex) => {
+                    updateFieldIds(nestedGroupItem.fields, field.id, nestedIndex);
+                  });
+                } else {
+                  const originalFieldId = field.id.includes('-') ? 
+                    field.id.split("-").slice(2).join("-") : field.id;
+                  field.id = generateUniqueId(currentGroupId, currentGroupIndex, originalFieldId);
+                }
+              });
+            };
 
-      if (group && group.groupItems) {
-        group?.groupItems?.splice(groupItemIndex, 1);
-        // Update IDs for remaining group items
-        group?.groupItems?.forEach((groupItem, newIndex) => {
-          groupItem.fields.forEach((field: Item) => {
-            field.id = generateUniqueId(
-              groupId,
-              newIndex,
-              field.id.split("-").slice(2).join("-")
-            );
+            updateFieldIds(groupItem.fields, groupId, newIndex);
           });
-        });
+        }
+      };
 
-      }
+      updateNestedGroup(newFormData.data.items, groupId, updateGroup);
       return newFormData;
     });
 
@@ -511,15 +580,26 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
       const reindexedGroup = updatedGroup.map((groupItem, newIndex) => {
         const newGroupItem: { [key: string]: string } = {};
         Object.keys(groupItem).forEach((key) => {
-          const newKey = generateUniqueId(
-            groupId,
-            newIndex,
-            key.split("-").slice(2).join("-")
-          );
+          const originalFieldId = key.includes('-') ? 
+            key.split("-").slice(2).join("-") : key;
+          const newKey = generateUniqueId(groupId, newIndex, originalFieldId);
           newGroupItem[newKey] = groupItem[key];
         });
         return newGroupItem;
       });
+
+      const group = findGroup(formData?.data?.items || [], groupId);
+      if (group?.groupItems) {
+        group.groupItems[0]?.fields.forEach((field) => {
+          if (field.type === "group") {
+            // Remove orphaned nested group states
+            if (newState[field.id] && newState[field.id].length > reindexedGroup.length) {
+              newState[field.id] = newState[field.id].slice(0, reindexedGroup.length);
+            }
+          }
+        });
+      }
+
       return {
         ...newState,
         [groupId]: reindexedGroup,
