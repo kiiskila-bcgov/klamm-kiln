@@ -1510,7 +1510,9 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
         );
       case "group":
         return (
-          <div key={item.id} className="group-container">
+          <div key={item.id} className="group-container" 
+          {...item.attributes}
+          >
             <div className="group-header">{item.repeater && item.label}</div>
             {item.groupItems?.map((groupItem, groupIndex) => (
               <div key={`${item.id}-${groupIndex}`} className="group-item-container">
