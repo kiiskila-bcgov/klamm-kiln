@@ -1,5 +1,4 @@
-// ExternalStateContext.js
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useState, useEffect } from "react";
 
 interface FieldMethods {
   setValue: (value: any) => void;
@@ -196,11 +195,10 @@ class ExternalFormStoreImpl implements ExternalFormStore {
     ) {
       try {
         const status = this.getRegistrationStatus();
-        console.log("Initializing external script with field refs:", status);
 
-        // Don't initialize if no fields are registered yet
+        // Don't initialize if no fields are registered
         if (status.totalFields === 0) {
-          console.log("No fields registered yet, skipping initialization");
+          console.log("No fields registered, skipping initialization");
           return;
         }
 
@@ -216,9 +214,8 @@ class ExternalFormStoreImpl implements ExternalFormStore {
         const refsForExternalScript: { [key: string]: any } = {};
         this.fieldRefs.forEach((methods, fieldId) => {
           refsForExternalScript[fieldId] = {
-            current: null, // DOM element will be set by components
+            current: null,
             setValue: (value: any) => {
-              // Prevent recursion by using a flag
               if (this.isUpdating) {
                 return;
               }
@@ -308,7 +305,7 @@ interface ExternalStateContextType {
   store: ExternalFormStore;
 }
 
-const ExternalStateContext = createContext<
+export const ExternalStateContext = createContext<
   ExternalStateContextType | undefined
 >(undefined);
 
@@ -326,7 +323,6 @@ export const ExternalStateProvider: React.FC<{ children: React.ReactNode }> = ({
     // Listen for external script ready event
     const handleExternalScriptReady = () => {
       console.log("External script ready event received");
-      // Don't initialize immediately, let field registration complete first
       setTimeout(() => {
         window.externalFormStore.reinitializeExternalScript();
       }, 1000);
@@ -352,14 +348,4 @@ export const ExternalStateProvider: React.FC<{ children: React.ReactNode }> = ({
       {children}
     </ExternalStateContext.Provider>
   );
-};
-
-export const useExternalState = () => {
-  const context = useContext(ExternalStateContext);
-  if (!context) {
-    throw new Error(
-      "useExternalState must be used within an ExternalStateProvider"
-    );
-  }
-  return context;
 };

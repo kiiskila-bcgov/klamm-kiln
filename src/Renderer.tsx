@@ -7,7 +7,7 @@ import { useHref } from 'react-router-dom';
 import CustomModal from "./common/CustomModal"; // Import the modal component
 import LoadingOverlay from "./common/LoadingOverlay";
 import { AuthenticationContext } from "./App";
-import { useExternalState } from "./ExternalStateContext"; 
+import { useExternalState } from "./hooks/ExternalStateHook";
 import {
   TextInput,
   Dropdown,
@@ -40,6 +40,10 @@ import {
   isFieldRequired,
 
 } from "./utils/helpers"; // Import from the helpers file
+import {
+  createFieldRegistration,
+  registerAllFields as registerAllFieldsUtil,
+} from "./utils/context";
 
 /*creating the structure of object Item. 
 All the form elements coming in the json will of the format type Item.
@@ -242,92 +246,29 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
     };
   };
   
-  // Replace the old createImperativeHandle with createFieldRegistration
-  const createFieldRegistration = (fieldId: string, groupId?: string, groupIndex?: number) => {
-    // Check if field is already registered
-    const existingRegistration = store.getFieldRef(fieldId);
-    if (existingRegistration) {
-      return existingRegistration;
-    }
-
-    const field = findFieldById(fieldId, formData);
-    const fieldInfo = parseFieldId(fieldId);
-
-    console.log(fieldInfo, 'this is fieldInfo')
-    
-    const methods = {
-      setValue: (value: any) => {
-        
-        // Check if the value is actually changing to prevent unnecessary updates
-        const currentValue = groupId !== undefined && groupIndex !== undefined
-          ? groupStates[groupId]?.[groupIndex]?.[fieldId]
-          : formStates[fieldId];
-          
-        if (currentValue === value) {
-          // console.log(`Value unchanged for ${fieldId}, skipping update`);
-          return;
-        }
-        
-        handleInputChange(fieldId, value, groupId || null, groupIndex || null, field || {} as Item);
-      },
-      
-      getValue: () => {
-        let value;
-        
-        if (groupId !== undefined && groupIndex !== undefined) {
-          value = groupStates[groupId]?.[groupIndex]?.[fieldId];
-        } else if (fieldInfo.isGroupField && fieldInfo.groupId && fieldInfo.groupIndex !== null) {
-          value = groupStates[fieldInfo.groupId]?.[fieldInfo.groupIndex]?.[fieldId];
-        } else {
-          value = formStates[fieldId];
-        }
-        
-        return value || "";
-      },
-      
-      setError: (error: string | null) => {
-        setFormErrors(prev => ({ ...prev, [fieldId]: error }));
-      },
-      
-      getError: () => formErrors[fieldId],
-      
-      validate: (value?: any) => {
-        if (field) {
-          const valueToValidate = value !== undefined ?
-            value :
-            (groupId !== undefined && groupIndex !== undefined ?
-              groupStates[groupId]?.[groupIndex]?.[fieldId] :
-              formStates[fieldId]);
-          return validateField(field, valueToValidate);
-        }
-        return null;
-      },
-      
-      fieldType: field?.type || "unknown",
-      isGroupField: fieldInfo.isGroupField,
-      groupId: fieldInfo.groupId,
-      groupIndex: fieldInfo.groupIndex
-    };
-    
-    store.registerField(fieldId, methods);
-    return methods;
+  // Create Initial field registration in external store
+  const createFieldRegistrationWrapper = (fieldId: string, groupId?: string, groupIndex?: number) => {
+    return createFieldRegistration({
+      fieldId,
+      groupId,
+      groupIndex,
+      store,
+      formData,
+      groupStates,
+      formStates,
+      setFormErrors,
+      handleInputChange,
+      validateField,
+    });
   };
 
-  // New function to register all fields with the external store
+  // Register all fields with the external store
   const registerAllFields = (items: Item[], parentGroupId?: string, parentGroupIndex?: number) => {
-    items.forEach((item) => {
-      if (item.type === "container" && item.containerItems) {
-        registerAllFields(item.containerItems, parentGroupId, parentGroupIndex);
-      } else if (item.type === "group" && item.groupItems) {
-        // console.log(`Processing group: ${item.id} with ${item.groupItems.length} group items`);
-        
-        item.groupItems.forEach((groupItem, groupIndex) => {
-          // console.log(`Processing group item ${groupIndex} for group ${item.id}`);
-          registerAllFields(groupItem.fields, item.id, groupIndex);
-        });
-      } else {
-        createFieldRegistration(item.id, parentGroupId, parentGroupIndex);
-      }
+    registerAllFieldsUtil({
+      items,
+      parentGroupId,
+      parentGroupIndex,
+      createFieldRegistration: createFieldRegistrationWrapper,
     });
   };
 
@@ -535,42 +476,53 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
     });
   }, [data]); // Add data as dependency to re-run when data changes
 
-  // New useEffect to register all fields after states are initialized
+  // Register all fields in store at initialization
+  // useEffect(() => {
+  //   if (formData?.data?.items && Object.keys(formStates).length > 0) {
+  //       registerAllFields(formData.data.items);
+  //         // Sync all current form values to the store
+  //         Object.entries(formStates).forEach(([fieldId, value]) => {
+  //           if (value !== undefined && value !== "") {
+  //             store.setState(fieldId, value);
+  //           }
+  //         });
+          
+  //         // Sync group state values
+  //         Object.entries(groupStates).forEach(([groupId, groupArray]) => {
+  //           groupArray.forEach((groupItem, groupIndex) => {
+  //             Object.entries(groupItem).forEach(([fieldId, value]) => {
+  //               if (value !== undefined && value !== "") {
+  //                 store.setState(fieldId, value);
+  //               }
+  //             });
+  //           });
+  //         });
+  //         store.initializeExternalScript();
+  //   }
+  // }, [formStates, groupStates, formData]);
   useEffect(() => {
-    if (formData?.data?.items && Object.keys(formStates).length > 0) {
-      // Small delay to ensure all states are properly set
-      setTimeout(() => {
-        registerAllFields(formData.data.items);
-        
-        // Additional delay to ensure all fields are registered and their initial values are set
-        setTimeout(() => {
-          // Sync all current form values to the store
-          Object.entries(formStates).forEach(([fieldId, value]) => {
-            if (value !== undefined && value !== "") {
-              store.setState(fieldId, value);
-            }
-          });
-          
-          // Sync group state values
-          Object.entries(groupStates).forEach(([groupId, groupArray]) => {
-            groupArray.forEach((groupItem, groupIndex) => {
-              Object.entries(groupItem).forEach(([fieldId, value]) => {
-                if (value !== undefined && value !== "") {
-                  store.setState(fieldId, value);
-                }
-              });
-            });
-          });
-          
-          // Log registration status
-          const status = store.getRegistrationStatus();
-          console.log('Field registration complete:', status);
-          
-          // Try to initialize external script
-          store.initializeExternalScript();
-        }, 50);
-      }, 50);
+    const items = formData?.data?.items;
+    if (!items || Object.keys(formStates).length === 0) return;
+
+    registerAllFields(items);
+
+    const syncFields = (values: Record<string, any>) => {
+      for (const [fieldId, value] of Object.entries(values)) {
+        if (value != null && value !== "") {
+          store.setState(fieldId, value);
+        }
+      }
+    };
+
+    // Sync individual form states
+    syncFields(formStates);
+
+    // Sync grouped form states
+    for (const groupArray of Object.values(groupStates)) {
+      groupArray.forEach(syncFields);
     }
+
+    store.initializeExternalScript();
   }, [formStates, groupStates, formData]);
 
   /*
@@ -1128,7 +1080,7 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
     let fieldMethods = store.getFieldRef(fieldId);
     if (!fieldMethods) {
       // console.log(`Field ${fieldId} not found in store during render, creating registration`);
-      fieldMethods = createFieldRegistration(fieldId, groupId || undefined, groupIndex || undefined);
+      fieldMethods = createFieldRegistrationWrapper(fieldId, groupId || undefined, groupIndex || undefined);
     }
     
     switch (item.type) {
