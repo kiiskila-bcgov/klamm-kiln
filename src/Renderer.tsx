@@ -3,7 +3,6 @@ import "./print.css";
 import '@carbon/styles/css/styles.css';
 import "./page.scss";
 import React, { useState, useEffect, useRef, useContext } from "react";
-import { useHref } from 'react-router-dom';
 import CustomModal from "./common/CustomModal"; // Import the modal component
 import LoadingOverlay from "./common/LoadingOverlay";
 import { AuthenticationContext } from "./App";
@@ -194,58 +193,6 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
   const [modalMessage, setModalMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Helper function to find field by ID
-  const findFieldById = (fieldId: string, formDefinition: Template): Item | null => {
-    const searchItems = (items: Item[]): Item | null => {
-      for (const item of items) {
-        if (item.id === fieldId) {
-          return item;
-        }
-        if (item.type === "container" && item.containerItems) {
-          const found = searchItems(item.containerItems);
-          if (found) return found;
-        }
-        if (item.type === "group" && item.groupItems) {
-          for (const groupItem of item.groupItems) {
-            const found = searchItems(groupItem.fields);
-            if (found) return found;
-          }
-        }
-      }
-      return null;
-    };
-    
-    return searchItems(formDefinition.data.items);
-  };
-
-  // Helper function to identify if field is in a group based on ID structure
-  const parseFieldId = (fieldId: string) => {
-    // Group field IDs have format: groupId-groupIndex-fieldId
-    // We need to look at the actual groupStates to determine the correct structure
-    
-    // First, check if this field exists in any group states
-    for (const [groupId, groupStateArray] of Object.entries(groupStates)) {
-      for (let groupIndex = 0; groupIndex < groupStateArray.length; groupIndex++) {
-        if (groupStateArray[groupIndex] && fieldId in groupStateArray[groupIndex]) {
-          return {
-            isGroupField: true,
-            groupId,
-            groupIndex,
-            originalFieldId: fieldId
-          };
-        }
-      }
-    }
-    
-    // If not found in group states, it's a form field
-    return {
-      isGroupField: false,
-      groupId: null,
-      groupIndex: null,
-      originalFieldId: fieldId
-    };
-  };
-  
   // Create Initial field registration in external store
   const createFieldRegistrationWrapper = (fieldId: string, groupId?: string, groupIndex?: number) => {
     return createFieldRegistration({
@@ -476,30 +423,6 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
     });
   }, [data]); // Add data as dependency to re-run when data changes
 
-  // Register all fields in store at initialization
-  // useEffect(() => {
-  //   if (formData?.data?.items && Object.keys(formStates).length > 0) {
-  //       registerAllFields(formData.data.items);
-  //         // Sync all current form values to the store
-  //         Object.entries(formStates).forEach(([fieldId, value]) => {
-  //           if (value !== undefined && value !== "") {
-  //             store.setState(fieldId, value);
-  //           }
-  //         });
-          
-  //         // Sync group state values
-  //         Object.entries(groupStates).forEach(([groupId, groupArray]) => {
-  //           groupArray.forEach((groupItem, groupIndex) => {
-  //             Object.entries(groupItem).forEach(([fieldId, value]) => {
-  //               if (value !== undefined && value !== "") {
-  //                 store.setState(fieldId, value);
-  //               }
-  //             });
-  //           });
-  //         });
-  //         store.initializeExternalScript();
-  //   }
-  // }, [formStates, groupStates, formData]);
   useEffect(() => {
     const items = formData?.data?.items;
     if (!items || Object.keys(formStates).length === 0) return;
@@ -514,10 +437,8 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
       }
     };
 
-    // Sync individual form states
+    // Sync all current form values to the store
     syncFields(formStates);
-
-    // Sync grouped form states
     for (const groupArray of Object.values(groupStates)) {
       groupArray.forEach(syncFields);
     }
@@ -1079,7 +1000,6 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
     // Get existing field registration or create new one
     let fieldMethods = store.getFieldRef(fieldId);
     if (!fieldMethods) {
-      // console.log(`Field ${fieldId} not found in store during render, creating registration`);
       fieldMethods = createFieldRegistrationWrapper(fieldId, groupId || undefined, groupIndex || undefined);
     }
     
@@ -1204,7 +1124,6 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
               selectedItem={selectedItem}
               onChange={({ selectedItem }: { selectedItem: any }) => {
                 const newValue = selectedItem?.value || "";
-                
                 handleInputChange(fieldId, newValue, groupId, groupIndex, item);
               }}
               style={{               
@@ -1247,7 +1166,6 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
                 onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
                   const isChecked = event.target.checked;
                   handleInputChange(fieldId, isChecked, groupId, groupIndex, item);
-                  store.setState(fieldId, isChecked);
                 }}
                 readOnly={formData.readOnly || doesFieldHasCondition("readOnly", item, groupId, groupIndex) || calcValExists || mode == "view"}
                 invalid={!!error}
@@ -1293,7 +1211,6 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
               }
               onToggle={(checked: boolean) => {
                 handleInputChange(fieldId, checked, groupId, groupIndex, item);
-                store.setState(fieldId, checked);
               }}
               readOnly={formData.readOnly || doesFieldHasCondition("readOnly", item, groupId, groupIndex) || calcValExists || mode == "view"}
               invalid={!!error}
@@ -1324,11 +1241,9 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
               onChange={(dates: Date[]) => {
                 if (dates.length === 0) {
                   handleInputChange(fieldId, "", groupId, groupIndex, item);
-                  store.setState(fieldId, "");
                 } else {
                   const internalFormattedDate = formatDate(dates[0], internalDateFormat);
                   handleInputChange(fieldId, internalFormattedDate, groupId, groupIndex, item);
-                  store.setState(fieldId, internalFormattedDate);
                 }
               }}
               style={{                
@@ -1387,7 +1302,6 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
               }
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
                 handleInputChange(fieldId, e.target.value, groupId, groupIndex, item);
-                store.setState(fieldId, e.target.value);
               }}
               rows={4}
               style={{                
@@ -1548,7 +1462,6 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
                 name={fieldId}
                 onChange={(value: string) => {
                   handleInputChange(fieldId, value, groupId, groupIndex, item);
-                  store.setState(fieldId, value);
                 }}
                 valueSelected={
                   groupId
@@ -1620,7 +1533,6 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
               }
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                 handleInputChange(fieldId, e.target.value, groupId, groupIndex, item);
-                store.setState(fieldId, e.target.value);
               }}
               invalid={!!error}
               invalidText={error || ""}
