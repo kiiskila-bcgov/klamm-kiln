@@ -1,3 +1,15 @@
+/**
+ * ExternalStateContext provides a global store for form field values and methods.
+ *
+ * External scripts can interact with the form via:
+ *   - window.externalFormStore: The global store instance.
+ *   - window.externalFormInit(refsMap): Called when all fields are registered.
+ *
+ * Each field reference (from store.getFieldRef(fieldId) or refsMap[fieldId]) exposes:
+ *   - setValue(value): Set the field value.
+ *   - getValue(): Get the current field value.
+ *
+ */
 import React, { createContext, useState, useEffect } from "react";
 
 interface FieldMethods {
