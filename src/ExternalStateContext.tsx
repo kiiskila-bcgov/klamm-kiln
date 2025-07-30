@@ -155,11 +155,8 @@ class ExternalFormStoreImpl implements ExternalFormStore {
 
     // Wait for field registrations to complete, then initialize external script
     this.registrationCompleteTimeout = setTimeout(() => {
-      console.log(
-        "Field registration appears complete, initializing external script"
-      );
       this.reinitializeExternalScript();
-    }, 500); // Wait 500ms after last field registration
+    }, 500);
   }
 
   getFieldRef(fieldId: string) {
@@ -182,7 +179,6 @@ class ExternalFormStoreImpl implements ExternalFormStore {
   }
 
   clearRegistrations() {
-    console.log("Clearing all field registrations");
     if (this.registrationCompleteTimeout) {
       clearTimeout(this.registrationCompleteTimeout);
       this.registrationCompleteTimeout = null;
@@ -194,7 +190,6 @@ class ExternalFormStoreImpl implements ExternalFormStore {
   }
 
   reinitializeExternalScript() {
-    console.log("Re-initializing external script");
     this.externalScriptInitialized = false;
     this.initializeExternalScript();
   }
@@ -210,7 +205,6 @@ class ExternalFormStoreImpl implements ExternalFormStore {
 
         // Don't initialize if no fields are registered
         if (status.totalFields === 0) {
-          console.log("No fields registered, skipping initialization");
           return;
         }
 
@@ -283,19 +277,17 @@ class ExternalFormStoreImpl implements ExternalFormStore {
 
         window.externalFormInit(refsForExternalScript);
         this.externalScriptInitialized = true;
-        console.log("External script initialized successfully");
       } catch (error) {
         console.error("Error initializing external script:", error);
       }
     } else if (!window.externalFormInit) {
-      console.log("External script not available yet, will retry...");
+      // console.log("External script not available yet, will retry...");
     } else if (this.externalScriptInitialized) {
-      console.log("External script already initialized");
+      // console.log("External script already initialized");
     }
   }
 
   resetExternalScript() {
-    console.log("Resetting external script initialization flag");
     this.externalScriptInitialized = false;
   }
 }
@@ -334,7 +326,6 @@ export const ExternalStateProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     // Listen for external script ready event
     const handleExternalScriptReady = () => {
-      console.log("External script ready event received");
       setTimeout(() => {
         window.externalFormStore.reinitializeExternalScript();
       }, 1000);

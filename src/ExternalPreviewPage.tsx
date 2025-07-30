@@ -375,7 +375,7 @@ const ExternalPreviewPage = () => {
 
       <Button
         kind="ghost"
-        size="small"
+        size="sm"
         onClick={() => setSidePanelOpen(true)}
         className={`info-button ${
           isDraft ? "info-button--draft" : "info-button--normal"

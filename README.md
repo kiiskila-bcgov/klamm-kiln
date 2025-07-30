@@ -16,7 +16,7 @@ It is developed using Carbon/React + TypeScript + Vite
 - Clone the repository:
 
 ```
-git clone https://github.com/kiiskila-bcgov/kiln.git
+git clone https://github.com/bcgov/kiln.git
 
 ```
 
