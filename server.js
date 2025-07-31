@@ -2,7 +2,6 @@ import http from "http";
 import fs from "fs";
 import path from "path";
 import url from "url";
-import process from "process";
 
 const port = 8080;
 import { fileURLToPath } from "url";
@@ -11,15 +10,6 @@ import { dirname } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const distPath = path.join(__dirname, "dist");
-
-// Resolve symlinks in distPath once at startup
-let resolvedDistPath;
-try {
-  resolvedDistPath = fs.realpathSync(distPath);
-} catch (err) {
-  console.error("Failed to resolve dist directory:", err);
-  process.exit(1);
-}
 
 // MIME types mapping
 const mimeTypes = {
@@ -62,65 +52,21 @@ const server = http.createServer((req, res) => {
   if (
     pathname.match(/\.(js|css|png|jpg|gif|svg|ico|ttf|woff|woff2|map|json)$/)
   ) {
-    let filePath = path.resolve(distPath, `.${pathname}`);
-    let resolvedFilePath;
-    try {
-      resolvedFilePath = fs.realpathSync(filePath);
-    } catch (err) {
-      res.writeHead(404);
-      res.end("File not found");
-      return;
-    }
-
-    // Robust containment check: ensure resolvedFilePath is inside resolvedDistPath
-    const relative = path.relative(resolvedDistPath, resolvedFilePath);
-    if (
-      relative.startsWith("..") || 
-      path.isAbsolute(relative) || 
-      !resolvedFilePath.startsWith(resolvedDistPath + path.sep)
-    ) {
-      res.writeHead(403);
-      res.end("Forbidden");
-      return;
-    }
+    let filePath = path.join(distPath, pathname);
 
     // If the file doesn't exist at the direct path, try without /preview prefix
-    if (!fs.existsSync(resolvedFilePath) && pathname.startsWith("/preview/")) {
-      filePath = path.resolve(
-        distPath,
-        `.${pathname.substring("/preview".length)}`
-      );
-      try {
-        resolvedFilePath = fs.realpathSync(filePath);
-      } catch (err) {
-        res.writeHead(404);
-        res.end("File not found");
-        return;
-      }
-      // Robust containment check: ensure resolvedFilePath is inside resolvedDistPath
-      const relativePreview = path.relative(resolvedDistPath, resolvedFilePath);
-      if (
-        relativePreview.startsWith("..") || 
-        path.isAbsolute(relativePreview) || 
-        !resolvedFilePath.startsWith(resolvedDistPath + path.sep)
-      ) {
-        res.writeHead(403);
-        res.end("Forbidden");
-        return;
-      }
+    if (!fs.existsSync(filePath) && pathname.startsWith("/preview/")) {
+      filePath = path.join(distPath, pathname.substring("/preview".length));
     }
 
-    // Create a safe file path only after validation
-    const safeFilePath = resolvedFilePath;
-
-    if (fs.existsSync(safeFilePath)) {
-      const ext = path.extname(safeFilePath);
+    if (fs.existsSync(filePath)) {
+      const ext = path.extname(filePath);
       const mimeType = mimeTypes[ext] || "application/octet-stream";
 
       res.setHeader("Content-Type", mimeType);
       res.setHeader("Cache-Control", "public, max-age=31536000");
 
-      const fileStream = fs.createReadStream(safeFilePath);
+      const fileStream = fs.createReadStream(filePath);
       fileStream.pipe(res);
 
       fileStream.on("error", (err) => {
