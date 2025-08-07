@@ -520,7 +520,8 @@ useEffect(() => {
         // Create a deep copy of the first group item and modify its IDs
         const newGroupItem = JSON.parse(JSON.stringify(group.groupItems[0]));
         newGroupItem.fields.forEach((field: Item) => {
-          const templateId = (field as any).templateId || field.id;
+          const fieldWithTemplate = field as Item & { templateId?: string };
+          const templateId = fieldWithTemplate.templateId || field.id;
           const newFieldId = generateUniqueId(groupId, groupIndex, templateId);
           field.id = newFieldId;
           field.value = initialData?.[templateId] || initialData?.[newFieldId] || "";
@@ -539,7 +540,8 @@ useEffect(() => {
 
       const newGroupItemState: { [key: string]: string } = {};
       firstGroupItem?.fields.forEach((field: Item) => {
-        const templateId = (field as any).templateId as string;
+        const fieldWithTemplate = field as Item & { templateId?: string };
+        const templateId = fieldWithTemplate.templateId || field.id;
         const newFieldId = generateUniqueId(groupId, groupIndex, templateId);
         newGroupItemState[newFieldId] = initialData?.[newFieldId] ?? "";
       });
@@ -551,32 +553,31 @@ useEffect(() => {
 
     // Recursively update groupStates for nested groups
   function updateNestedGroupState(
-    groupStates: GroupState,
+    groupStates: { [key: string]: GroupState },
     groupId: string,
     newGroupItemState: { [key: string]: string }
-  ): GroupState {
-    if (groupStates[groupId]) {
-      // Top-level group, just append
+  ): { [key: string]: GroupState } {
+    if (groupStates[groupId] && Array.isArray(groupStates[groupId])) {
       return {
         ...groupStates,
         [groupId]: [...groupStates[groupId], newGroupItemState],
       };
     }
-    // Search nested
-    for (const key of Object.keys(groupStates)) {
-      const arr = groupStates[key];
+    const updatedGroupStates = { ...groupStates };
+    for (const key of Object.keys(updatedGroupStates)) {
+      const arr = updatedGroupStates[key];
       if (Array.isArray(arr)) {
-        const updatedArr = arr.map((item) => {
-          // If this item contains nested groups, recurse
-          if (typeof item === "object" && item !== null) {
-            return updateNestedGroupState(item, groupId, newGroupItemState);
-          }
+        const updatedArr = arr.map((item: { [key: string]: string }) => {
           return item;
         });
-        groupStates[key] = updatedArr;
+        updatedGroupStates[key] = updatedArr;
       }
     }
-    return { ...groupStates };
+    if (!updatedGroupStates[groupId]) {
+      updatedGroupStates[groupId] = [newGroupItemState];
+    }
+
+    return updatedGroupStates;
   }
 
   /*
