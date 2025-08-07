@@ -268,8 +268,8 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
       items.forEach((item) => {
         if (item.type === "container" && item.containerItems) {
           processItemsInitially(item.containerItems);
-        }
-        else if (item.type === "group") {
+        } else if (item.type === "group") {
+          // Initialize group state for this group
           initialGroupStates[item.id] =
             item.groupItems?.map((groupItem, groupIndex) => {
               const groupState: { [key: string]: string } = {};
@@ -284,6 +284,16 @@ const Renderer: React.FC<RendererProps> = ({ data, mode, goBack }) => {
               });
               return groupState;
             }) || [];
+          // Recursively process nested groups/containers inside group items
+          item.groupItems?.forEach((groupItem) => {
+            groupItem.fields.forEach((field) => {
+              if (field.type === "group" && field.groupItems) {
+                processItemsInitially([field]);
+              } else if (field.type === "container" && field.containerItems) {
+                processItemsInitially(field.containerItems);
+              }
+            });
+          });
         } else {
           initialFormStates[item.id] = "";
         }
@@ -376,7 +386,9 @@ useEffect(() => {
   // Sync all current form values to the store
   syncFields(formStates);
   for (const groupArray of Object.values(groupStates)) {
-    groupArray.forEach(syncFields);
+    if (Array.isArray(groupArray)) {
+      groupArray.forEach(syncFields);
+    }
   }
 
   store.initializeExternalScript();
@@ -417,12 +429,21 @@ useEffect(() => {
 
     if (groupId !== null && groupIndex !== null) {
       validationError = validateField(field, value);
-      setGroupStates((prevState) => ({
-        ...prevState,
-        [groupId]: prevState[groupId].map((item, index) =>
-          index === groupIndex ? { ...item, [fieldId]: value } : item
-        ),
-      }));
+      setGroupStates((prevState) => {
+        const groupArray = prevState[groupId] ?? [];
+        const newGroupArray = [...groupArray];
+        if (!newGroupArray[groupIndex]) {
+          newGroupArray[groupIndex] = {};
+        }
+        newGroupArray[groupIndex] = {
+          ...newGroupArray[groupIndex],
+          [fieldId]: value,
+        };
+        return {
+          ...prevState,
+          [groupId]: newGroupArray,
+        };
+      });
     } else {
       validationError = validateField(field, value);
       setFormStates((prevState) => ({
@@ -442,11 +463,38 @@ useEffect(() => {
   const findGroup = (items: Item[], groupId: string): Item | undefined => {
     for (const item of items) {
       if (item.id === groupId && item.type === "group") {
-        return item; // Found the group
+        return item;
       }
+      // Nested matching
+      if (groupId.startsWith(item.id)) {
+        const rest = groupId.slice(item.id.length);
+        // If the next part is a dash and more remains, keep searching
+        if (rest.startsWith("-") && rest.length > 1) {
+          const nextId = rest.slice(1); // Remove leading dash
+          // Search in groupItems if this is a group
+          if (item.type === "group" && item.groupItems) {
+            for (const groupItem of item.groupItems) {
+              const found = findGroup(groupItem.fields, nextId);
+              if (found) return found;
+            }
+          }
+          // Search in containerItems if this is a container
+          if (item.type === "container" && item.containerItems) {
+            const found = findGroup(item.containerItems, nextId);
+            if (found) return found;
+          }
+        }
+      }
+
       if (item.type === "container" && item.containerItems) {
-        const foundGroup = findGroup(item.containerItems, groupId);
-        if (foundGroup) return foundGroup;
+        const found = findGroup(item.containerItems, groupId);
+        if (found) return found;
+      }
+      if (item.type === "group" && item.groupItems) {
+        for (const groupItem of item.groupItems) {
+          const found = findGroup(groupItem.fields, groupId);
+          if (found) return found;
+        }
       }
     }
     return undefined;
@@ -472,19 +520,12 @@ useEffect(() => {
         // Create a deep copy of the first group item and modify its IDs
         const newGroupItem = JSON.parse(JSON.stringify(group.groupItems[0]));
         newGroupItem.fields.forEach((field: Item) => {
-          // Use templateId if present, otherwise original id
           const templateId = (field as any).templateId || field.id;
           const newFieldId = generateUniqueId(groupId, groupIndex, templateId);
           field.id = newFieldId;
-          // Set initial value if provided
-          if (initialData) {
-            field.value = initialData[templateId] || initialData[newFieldId] || "";
-          } else {
-            field.value = "";
-          }
+          field.value = initialData?.[templateId] || initialData?.[newFieldId] || "";
         });
 
-        // Only add one group item
         group.groupItems.push(newGroupItem);
       }
 
@@ -492,25 +533,51 @@ useEffect(() => {
     });
 
     setGroupStates((prevGroupStates) => {
-      const newState = { ...prevGroupStates };
-      const newGroupItemState: { [key: string]: string } = {};
-      const group = formData?.data.items.find((item) => item.id === groupId);
-      const groupIndex = newState[groupId]?.length || 0;
-      const firstGroupItem = group?.groupItems?.[0];
+      const groupDef = findGroup(formData.data.items, groupId);
+      const groupIndex = (prevGroupStates[groupId]?.length) || 0;
+      const firstGroupItem = groupDef?.groupItems?.[0];
 
+      const newGroupItemState: { [key: string]: string } = {};
       firstGroupItem?.fields.forEach((field: Item) => {
-        // Use the saved templateId
-        const templateld = (field as any).templateId as string;
-        const newFieldId = generateUniqueId(groupId, groupIndex, templateld);
+        const templateId = (field as any).templateId as string;
+        const newFieldId = generateUniqueId(groupId, groupIndex, templateId);
         newGroupItemState[newFieldId] = initialData?.[newFieldId] ?? "";
       });
 
-      return {
-        ...newState,
-        [groupId]: [...(prevGroupStates[groupId] || []), newGroupItemState],
-      };
+      // Use recursive helper for nested groups
+      return updateNestedGroupState(prevGroupStates, groupId, newGroupItemState);
     });
   };
+
+    // Recursively update groupStates for nested groups
+  function updateNestedGroupState(
+    groupStates: GroupState,
+    groupId: string,
+    newGroupItemState: { [key: string]: string }
+  ): GroupState {
+    if (groupStates[groupId]) {
+      // Top-level group, just append
+      return {
+        ...groupStates,
+        [groupId]: [...groupStates[groupId], newGroupItemState],
+      };
+    }
+    // Search nested
+    for (const key of Object.keys(groupStates)) {
+      const arr = groupStates[key];
+      if (Array.isArray(arr)) {
+        const updatedArr = arr.map((item) => {
+          // If this item contains nested groups, recurse
+          if (typeof item === "object" && item !== null) {
+            return updateNestedGroupState(item, groupId, newGroupItemState);
+          }
+          return item;
+        });
+        groupStates[key] = updatedArr;
+      }
+    }
+    return { ...groupStates };
+  }
 
   /*
   Function to remove a group item from a group. Triggered on Remove button.
