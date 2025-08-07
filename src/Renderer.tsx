@@ -1342,7 +1342,7 @@ const handleRemoveGroupItem = (groupId: string, groupItemIndex: number) => {
           />
         );
       case "text-info":
-        const textInfo = item.value || "";
+        const textInfo = item?.attributes?.content || "";
         return (
 
           <Component
