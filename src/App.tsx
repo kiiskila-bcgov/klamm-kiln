@@ -2,9 +2,10 @@ import "./App.css";
 import NewFormPage from "./NewFormPage";
 import EditFormPage from "./EditFormPage";
 import ViewFormPage from "./ViewFormPage";
+import NewPortalFormPage from "./NewPortalFormPage";
 import PreviewFormPage from "./PreviewFormPage";
 import ExternalPreviewPage from "./ExternalPreviewPage";
-import PrintFormPage from "./PrintFormPage";
+import GenerateFormPage from "./GenerateFormPage";
 import UnauthorizedPage from "./UnauthorizedPage";
 import ErrorPage from "./ErrorPage";
 import "@carbon/styles/css/styles.css";
@@ -27,10 +28,33 @@ const App: React.FC = () => {
   // Check if we're in standalone mode
   const isStandaloneMode = import.meta.env.VITE_STANDALONE_MODE === 'true';
 
-  // Public Routes
-  const publicRoutes = ["/preview", "/unauthorized", "/printToPDF", "/error"];
+  const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === "true";
+  console.log("Is PortalIntegrated",isPortalIntegrated);
 
+  // Public Routes
+  const publicRoutes = [
+    "/preview",
+    "/unauthorized",
+    "/printToPDF",
+    "/error",
+    ...(isPortalIntegrated ? ["/new"] : []),
+  ];
+
+  const NewFormConditionalRoute = isPortalIntegrated ? (
+    <NewPortalFormPage/>
+  ) :(
+    <PrivateRoute>
+      <NewFormPage />
+    </PrivateRoute>
+  ) ;
+ 
   useEffect(() => {
+    // Skip authentication in standalone mode
+    if (isStandaloneMode) {
+      setLoading(false);
+      return;
+    }
+
     const initKeycloak = async () => {
       try {
         const _keycloak = await initializeKeycloak();
@@ -42,11 +66,7 @@ const App: React.FC = () => {
       }
     };
 
-    // Skip authentication in standalone mode
-    if (isStandaloneMode) {
-      setLoading(false);
-      return;
-    }
+
 
     // Initialize Keycloak for protected routes
     if (!publicRoutes.includes(location.pathname)) {
@@ -71,20 +91,21 @@ const App: React.FC = () => {
           {/* Public Routes */}
           <Route path="/preview" element={<PreviewFormPage />} />
           <Route path="/preview/:id" element={<ExternalPreviewPage />} />
-          <Route path="/printToPDF" element={<PrintFormPage />} />
+          <Route path="/generateForm" element={<GenerateFormPage />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
           <Route path="/error" element={<ErrorPage />} />
 
           {/* Protected Routes - bypass PrivateRoute in standalone mode */}
           {isStandaloneMode ? (
             <>
-              <Route path="/new" element={<NewFormPage />} />
+              <Route path="/new" element={NewFormConditionalRoute} />
               <Route path="/edit" element={<EditFormPage />} />
               <Route path="/view" element={<ViewFormPage />} />
             </>
           ) : (
             <>
-              <Route path="/new" element={<PrivateRoute><NewFormPage /></PrivateRoute>} />
+              {/* Protected Routes */}
+              <Route path="/new" element={NewFormConditionalRoute}/>
               <Route path="/edit" element={<PrivateRoute><EditFormPage /></PrivateRoute>} />
               <Route path="/view" element={<PrivateRoute><ViewFormPage /></PrivateRoute>} />
             </>

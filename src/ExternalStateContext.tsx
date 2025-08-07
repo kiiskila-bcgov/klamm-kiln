@@ -46,6 +46,7 @@ interface ExternalFormStore {
     registeredFields: string[];
   };
   clearRegistrations: () => void;
+  hasRegistrations: () => boolean;
 }
 
 // External store that lives outside React
@@ -197,6 +198,10 @@ class ExternalFormStoreImpl implements ExternalFormStore {
     console.log("Re-initializing external script");
     this.externalScriptInitialized = false;
     this.initializeExternalScript();
+  }
+
+  hasRegistrations(): boolean {
+    return this.fieldRefs.size > 0;
   }
 
   initializeExternalScript() {
